@@ -51,12 +51,24 @@ ipcMain.handle('select-input-file', async (event, fileType) => {
 });
 
 // 处理选择输出文件
-ipcMain.handle('select-output-file', async (event, defaultName) => {
+ipcMain.handle('select-output-file', async (event, defaultName, extension) => {
+  // 设置文件过滤器，默认为MP4
+  let filters = [
+    { name: 'MP4 文件', extensions: ['mp4'] }
+  ];
+  
+  // 如果提供了特定扩展名，使用该扩展名作为过滤器
+  if (extension) {
+    // 移除前导点号(如果有)
+    const ext = extension.startsWith('.') ? extension.substring(1) : extension;
+    filters = [
+      { name: `${ext.toUpperCase()} 文件`, extensions: [ext] }
+    ];
+  }
+  
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: defaultName,
-    filters: [
-      { name: 'MP4 文件', extensions: ['mp4'] }
-    ]
+    filters: filters
   });
   
   if (result.canceled) {
@@ -115,10 +127,13 @@ ipcMain.handle('cut-multiple-segments', async (event, { inputPath, outputDir, se
         const segment = segments[i];
         const { startTime, endTime, label } = segment;
         
+        // 获取原始文件扩展名
+        const fileExt = path.extname(inputPath);
+        
         // 生成输出文件名
         const fileName = label ? 
-          `${path.basename(inputPath, path.extname(inputPath))}_${label}.mp4` : 
-          `${path.basename(inputPath, path.extname(inputPath))}_segment${i+1}.mp4`;
+          `${path.basename(inputPath, path.extname(inputPath))}_${label}${fileExt}` : 
+          `${path.basename(inputPath, path.extname(inputPath))}_segment${i+1}${fileExt}`;
         
         const outputPath = path.join(outputDir, fileName);
         tmpFilePaths.push(outputPath);
@@ -181,4 +196,53 @@ ipcMain.handle('convert-mkv', async (event, { inputPath, outputPath }) => {
       resolve('MKV转MP4成功');
     });
   });
+});
+
+// 处理导出配置到JSON文件
+ipcMain.handle('export-config', async (event, { configData, defaultName }) => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultName || 'mcut_config.json',
+      filters: [
+        { name: 'JSON 文件', extensions: ['json'] }
+      ]
+    });
+    
+    if (result.canceled) {
+      return null;
+    }
+    
+    // 写入文件
+    fs.writeFileSync(result.filePath, JSON.stringify(configData, null, 2), 'utf-8');
+    mainWindow.webContents.send('log', `配置已导出到: ${result.filePath}`);
+    return result.filePath;
+  } catch (error) {
+    mainWindow.webContents.send('log', `导出配置失败: ${error.message}`);
+    throw error;
+  }
+});
+
+// 处理从JSON文件导入配置
+ipcMain.handle('import-config', async (event) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'JSON 文件', extensions: ['json'] }
+      ]
+    });
+    
+    if (result.canceled) {
+      return null;
+    }
+    
+    // 读取文件
+    const configData = fs.readFileSync(result.filePaths[0], 'utf-8');
+    const parsedData = JSON.parse(configData);
+    mainWindow.webContents.send('log', `配置已从 ${result.filePaths[0]} 导入`);
+    return parsedData;
+  } catch (error) {
+    mainWindow.webContents.send('log', `导入配置失败: ${error.message}`);
+    throw error;
+  }
 }); 

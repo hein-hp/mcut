@@ -568,6 +568,22 @@
               添加片段
             </button>
           </div>
+          
+          <!-- 添加导入导出按钮 -->
+          <div class="config-actions" style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 15px;">
+            <button class="browse-button" onclick="exportConfig()" style="flex: 1;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
+              </svg>
+              导出配置
+            </button>
+            <button class="browse-button" onclick="importConfig()" style="flex: 1;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 9h4V3h6v6h4l-7 7-7-7zM5 18v2h14v-2H5z" fill="currentColor" transform="rotate(180) translate(-24, -24)"/>
+              </svg>
+              导入配置
+            </button>
+          </div>
         </div>
         
         <button id="cutMultipleButton" class="action-button" onclick="cutMultipleSegments()" disabled>剪切视频</button>
@@ -640,6 +656,17 @@
         segment.label = `片段${index + 1}`;
       });
       console.log(`修复后片段数组长度: ${segments.length}`);
+    }
+
+    // 获取文件名（模拟path.basename）
+    function getBasename(filePath, ext) {
+      if (!filePath) return '';
+      const parts = filePath.split(/[\/\\]/);
+      let filename = parts[parts.length - 1];
+      if (ext && filename.endsWith(ext)) {
+        return filename.slice(0, -ext.length);
+      }
+      return filename;
     }
 
     // 标签页切换函数
@@ -755,7 +782,7 @@
     // 选择转换输出文件
     async function selectConvertOutputFile() {
       let defaultName = convertInputPath ? convertInputPath.replace(/\.[^/.]+$/, ".mp4") : "";
-      const filePath = await window.electronAPI.selectOutputFile(defaultName);
+      const filePath = await window.electronAPI.selectOutputFile(defaultName, 'mp4');
       if (filePath) {
         convertOutputPath = filePath;
         document.getElementById('convertOutputFile').textContent = filePath;
@@ -964,6 +991,96 @@
       statusText.textContent = '准备就绪';
       
       console.log('日志已清除');
+    }
+    
+    // 导出配置到JSON文件
+    async function exportConfig() {
+      try {
+        // 过滤有效片段
+        const validSegments = segments.filter(segment => 
+          segment.startTime && segment.endTime && 
+          validateTimeFormat(segment.startTime) && 
+          validateTimeFormat(segment.endTime)
+        );
+        
+        if (validSegments.length === 0) {
+          addLog('警告: 没有有效的片段可以导出');
+          return;
+        }
+        
+        // 创建配置对象
+        const config = {
+          inputPath: cutInputPath,
+          outputDir: cutOutputDir,
+          segments: validSegments,
+          exportDate: new Date().toISOString()
+        };
+        
+        // 获取文件扩展名
+        const getExtension = (filePath) => {
+          if (!filePath) return '';
+          const parts = filePath.split('.');
+          return parts.length > 1 ? `.${parts[parts.length - 1]}` : '';
+        };
+        
+        // 生成默认文件名
+        const filename = cutInputPath 
+          ? `mcut_${getBasename(cutInputPath, getExtension(cutInputPath))}_config.json` 
+          : 'mcut_config.json';
+        
+        // 导出到文件
+        const result = await window.electronAPI.exportConfig({
+          configData: config,
+          defaultName: filename
+        });
+        
+        if (result) {
+          addLog(`配置已成功导出到: ${result}`);
+        }
+      } catch (error) {
+        addLog(`导出配置失败: ${error}`);
+      }
+    }
+    
+    // 从JSON文件导入配置
+    async function importConfig() {
+      try {
+        const config = await window.electronAPI.importConfig();
+        if (!config) return; // 用户取消了操作
+        
+        // 应用导入的配置
+        if (config.inputPath) {
+          cutInputPath = config.inputPath;
+          document.getElementById('cutInputFile').textContent = config.inputPath;
+        }
+        
+        if (config.outputDir) {
+          cutOutputDir = config.outputDir;
+          document.getElementById('cutOutputDir').textContent = config.outputDir;
+        }
+        
+        if (config.segments && Array.isArray(config.segments)) {
+          // 替换现有片段数组
+          segments = config.segments;
+          
+          // 确保每个片段都有标签
+          segments.forEach((segment, index) => {
+            if (!segment.label) {
+              segment.label = `片段${index + 1}`;
+            }
+          });
+          
+          // 重新渲染片段列表
+          renderSegments();
+        }
+        
+        addLog(`已成功导入配置，包含 ${config.segments ? config.segments.length : 0} 个片段`);
+        
+        // 检查表单状态
+        checkMultiCutForm();
+      } catch (error) {
+        addLog(`导入配置失败: ${error}`);
+      }
     }
     
     // 页面加载时初始化片段列表
