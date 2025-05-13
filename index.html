@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MCut - 视频剪辑工具</title>
+  <style>
+    :root {
+      --apple-blue: #0066cc;
+      --apple-dark-gray: #333333;
+      --apple-light-gray: #f5f5f7;
+      --apple-border-gray: #d2d2d7;
+      --apple-hover-gray: #e5e5e5;
+      --apple-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    body {
+      font-family: var(--apple-font);
+      margin: 0;
+      padding: 0;
+      background-color: var(--apple-light-gray);
+      color: var(--apple-dark-gray);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .container {
+      max-width: 980px;
+      margin: 40px auto;
+      background-color: white;
+      padding: 30px;
+      border-radius: 18px;
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+    
+    .logo {
+      margin-right: 12px;
+    }
+    
+    h1 {
+      color: #1d1d1f;
+      margin: 0;
+      font-weight: 500;
+      font-size: 32px;
+      letter-spacing: -0.02em;
+    }
+    
+    .tab-container {
+      margin-top: 30px;
+    }
+    
+    .tab-buttons {
+      display: flex;
+      margin-bottom: 0;
+      border-bottom: 1px solid var(--apple-border-gray);
+    }
+    
+    .tab-button {
+      padding: 12px 25px;
+      cursor: pointer;
+      background-color: transparent;
+      border: none;
+      outline: none;
+      transition: all 0.2s ease;
+      font-size: 16px;
+      font-weight: 500;
+      color: #86868b;
+      position: relative;
+      border-radius: 0;
+      margin-right: 10px;
+    }
+    
+    .tab-button:hover {
+      color: var(--apple-blue);
+    }
+    
+    .tab-button.active {
+      color: var(--apple-blue);
+      font-weight: 600;
+    }
+    
+    .tab-button.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: var(--apple-blue);
+    }
+    
+    .tab-content {
+      display: none;
+      padding: 30px 0;
+    }
+    
+    .active-tab {
+      display: block;
+    }
+    
+    .form-group {
+      margin-bottom: 25px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #1d1d1f;
+      font-size: 15px;
+    }
+    
+    input {
+      padding: 12px 15px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+      border: 1px solid var(--apple-border-gray);
+      border-radius: 8px;
+      font-family: var(--apple-font);
+      font-size: 15px;
+      transition: border-color 0.2s ease;
+    }
+    
+    input:focus {
+      border-color: var(--apple-blue);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+    }
+    
+    button {
+      padding: 12px 22px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 15px;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--apple-font);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    button:hover {
+      transform: translateY(-1px);
+    }
+    
+    button:active {
+      transform: translateY(1px);
+    }
+    
+    button:disabled {
+      background-color: #f5f5f7;
+      color: #86868b;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .file-path {
+      background-color: #f5f5f7;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 14px;
+      color: #86868b;
+      border: 1px solid var(--apple-border-gray);
+    }
+    
+
+    
+    .log-message {
+      margin: 4px 0;
+      font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      color: #1d1d1f;
+    }
+    
+    .browse-button {
+      background-color: var(--apple-light-gray);
+      color: var(--apple-dark-gray);
+      border: 1px solid var(--apple-border-gray);
+    }
+    
+    .browse-button:hover {
+      background-color: var(--apple-hover-gray);
+    }
+    
+    .action-button {
+      margin-top: 15px;
+      background-color: var(--apple-blue);
+      color: white;
+    }
+    
+    .action-button:hover:not(:disabled) {
+      background-color: #0055b3;
+    }
+    
+    /* 按钮中的图标 */
+    .icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    
+    /* 标签提示样式 */
+    .label-hint {
+      color: #86868b;
+      font-weight: normal;
+      font-size: 13px;
+    }
+    
+    /* 日志容器样式增强 */
+    .log-section {
+      margin-top: 30px;
+      border: 1px solid var(--apple-border-gray);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    
+    .log-container {
+      height: 150px;
+      overflow-y: auto;
+      padding: 15px;
+      background-color: #fafafa;
+      position: relative;
+    }
+    
+    .log-footer {
+      padding: 10px 15px;
+      background-color: #f5f5f7;
+      border-top: 1px solid var(--apple-border-gray);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .log-status {
+      display: flex;
+      align-items: center;
+    }
+    
+    .clear-log-btn {
+      background-color: #f5f5f7;
+      color: var(--apple-dark-gray);
+      border: 1px solid var(--apple-border-gray);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      margin: 0;
+      width: auto;
+      transition: all 0.2s ease;
+    }
+    
+    .clear-log-btn:hover {
+      background-color: var(--apple-hover-gray);
+    }
+    
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      background-color: #4cd964;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    
+    .status-text {
+      font-size: 13px;
+      color: #86868b;
+    }
+    
+    /* 提升动画效果 */
+    .tab-button {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .tab-button::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: currentColor;
+      opacity: 0;
+      transform: scale(0);
+      transition: transform 0.3s, opacity 0.3s;
+      border-radius: 100%;
+      z-index: -1;
+    }
+    
+    .tab-button:active::after {
+      opacity: 0.1;
+      transform: scale(1);
+      transition: 0s;
+    }
+    
+    /* 添加操作按钮的动态效果 */
+    .action-button {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .action-button::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      border-radius: 100%;
+      transform: scale(1, 1) translate(-50%);
+      transform-origin: 50% 50%;
+    }
+    
+    .action-button:not(:disabled):active::after {
+      animation: ripple 1s ease-out;
+    }
+    
+    @keyframes ripple {
+      0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+      }
+      100% {
+        transform: scale(20, 20);
+        opacity: 0;
+      }
+    }
+    
+    /* 多段剪切相关样式 */
+    .segments-container {
+      margin-top: 20px;
+      border: 1px solid var(--apple-border-gray);
+      border-radius: 8px;
+      padding: 15px;
+      background-color: white;
+    }
+    
+    .segment-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+    
+    .segment-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      background-color: white;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    
+    .segment-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: var(--apple-blue);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    
+    .segment-input-group {
+      flex: 1;
+      margin: 0 5px;
+    }
+    
+    .segment-input-group input {
+      margin-bottom: 0;
+      padding: 10px 15px;
+    }
+    
+    .segment-button {
+      background: none;
+      border: none;
+      padding: 5px;
+      cursor: pointer;
+      color: #ff3b30;
+      margin: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .segment-button:hover {
+      background-color: #f5f5f7;
+      border-radius: 50%;
+    }
+    
+    .add-segment-btn {
+      background-color: var(--apple-blue);
+      color: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 15px;
+      width: auto;
+      gap: 5px;
+    }
+    
+    .add-segment-btn:hover {
+      background-color: #0055b3;
+    }
+    
+    .multi-mode-toggle {
+      display: flex;
+      align-items: center;
+      margin-top: 20px;
+      font-size: 15px;
+      color: #1d1d1f;
+      user-select: none;
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 26px;
+      margin-right: 10px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .3s;
+      border-radius: 26px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--apple-blue);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        margin: 20px;
+        padding: 20px;
+      }
+      
+      h1 {
+        font-size: 28px;
+      }
+      
+      .add-segment-form {
+        flex-direction: column;
+      }
+      
+      .segment-input-group {
+        width: 100%;
+      }
+      
+      .add-segment-btn {
+        width: 100%;
+        border-radius: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" fill="#0066cc"/>
+          <path d="M9 7.5L17 12L9 16.5V7.5Z" fill="white"/>
+        </svg>
+      </div>
+      <h1>MCut 视频工具</h1>
+    </div>
+    
+    <div class="tab-container">
+      <div class="tab-buttons">
+        <button class="tab-button active" onclick="openTab('cutTab')">视频剪切</button>
+        <button class="tab-button" onclick="openTab('convertTab')">MKV转MP4</button>
+      </div>
+      
+      <!-- 视频剪切标签页 -->
+      <div id="cutTab" class="tab-content active-tab">
+        <div class="form-group">
+          <label>选择输入视频文件</label>
+          <div id="cutInputFile" class="file-path">未选择文件</div>
+          <button class="browse-button" onclick="selectCutInputFile()">
+            <span class="icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+              </svg>
+            </span>
+            选择文件
+          </button>
+        </div>
+        
+        <div class="form-group">
+          <label>输出目录</label>
+          <div id="cutOutputDir" class="file-path">未选择目录</div>
+          <button class="browse-button" onclick="selectOutputDir()">
+            <span class="icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="currentColor"/>
+              </svg>
+            </span>
+            选择保存目录
+          </button>
+        </div>
+        
+        <div class="segments-container">
+          <h3 style="margin-top: 0;">剪切片段配置</h3>
+          <div id="segmentList" class="segment-list">
+            <!-- 片段将在这里动态添加 -->
+          </div>
+          
+          <div class="add-segment-form">
+            <button class="add-segment-btn" onclick="addSegment()" style="margin-bottom: 15px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+              </svg>
+              添加片段
+            </button>
+          </div>
+        </div>
+        
+        <button id="cutMultipleButton" class="action-button" onclick="cutMultipleSegments()" disabled>剪切视频</button>
+      </div>
+      
+      <!-- MKV转MP4标签页 -->
+      <div id="convertTab" class="tab-content">
+        <div class="form-group">
+          <label>选择MKV文件</label>
+          <div id="convertInputFile" class="file-path">未选择文件</div>
+          <button class="browse-button" onclick="selectConvertInputFile()">
+            <span class="icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+              </svg>
+            </span>
+            选择MKV文件
+          </button>
+        </div>
+        
+        <div class="form-group">
+          <label>输出MP4文件</label>
+          <div id="convertOutputFile" class="file-path">未选择文件</div>
+          <button class="browse-button" onclick="selectConvertOutputFile()">
+            <span class="icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
+              </svg>
+            </span>
+            选择保存位置
+          </button>
+        </div>
+        
+        <button id="convertButton" class="action-button" onclick="convertVideo()" disabled>转换为MP4</button>
+      </div>
+    </div>
+    
+    <!-- 日志显示区域 -->
+    <div class="log-section">
+      <div class="log-container" id="logContainer">
+        <div class="log-message">系统就绪，请选择操作...</div>
+      </div>
+      <div class="log-footer">
+        <div class="log-status">
+          <span class="status-indicator"></span>
+          <span class="status-text">准备就绪</span>
+        </div>
+        <button class="clear-log-btn" onclick="clearLog()">清除日志</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 全局变量存储文件路径
+    let cutInputPath = '';
+    let cutOutputDir = '';
+    let convertInputPath = '';
+    let convertOutputPath = '';
+    
+    // 用于存储要剪切的视频片段
+    let segments = [
+      {startTime: '', endTime: '', label: '片段1'},
+      {startTime: '', endTime: '', label: '片段2'}
+    ];
+    
+    // 检查和重置数组索引，确保处理多于2个片段
+    function repairSegmentsArray() {
+      // 重新标记每个片段
+      segments.forEach((segment, index) => {
+        segment.label = `片段${index + 1}`;
+      });
+      console.log(`修复后片段数组长度: ${segments.length}`);
+    }
+
+    // 标签页切换函数
+    function openTab(tabName) {
+      const tabContents = document.getElementsByClassName('tab-content');
+      for (let i = 0; i < tabContents.length; i++) {
+        tabContents[i].classList.remove('active-tab');
+      }
+      
+      const tabButtons = document.getElementsByClassName('tab-button');
+      for (let i = 0; i < tabButtons.length; i++) {
+        tabButtons[i].classList.remove('active');
+      }
+      
+      document.getElementById(tabName).classList.add('active-tab');
+      event.currentTarget.classList.add('active');
+    }
+
+    // 添加日志
+    function addLog(message) {
+      const logContainer = document.getElementById('logContainer');
+      const logMessage = document.createElement('div');
+      logMessage.className = 'log-message';
+      logMessage.textContent = message;
+      logContainer.appendChild(logMessage);
+      logContainer.scrollTop = logContainer.scrollHeight;
+      
+      // 更新状态指示器
+      updateStatus(message);
+    }
+    
+    // 更新状态指示器
+    function updateStatus(message) {
+      const statusIndicator = document.querySelector('.status-indicator');
+      const statusText = document.querySelector('.status-text');
+      
+      if (message.includes('开始') || message.includes('执行命令')) {
+        statusIndicator.style.backgroundColor = '#ff9500'; // 橙色表示处理中
+        statusText.textContent = '处理中...';
+      } else if (message.includes('完成') || message.includes('成功')) {
+        statusIndicator.style.backgroundColor = '#4cd964'; // 绿色表示成功
+        statusText.textContent = '操作成功';
+      } else if (message.includes('错误') || message.includes('失败')) {
+        statusIndicator.style.backgroundColor = '#ff3b30'; // 红色表示错误
+        statusText.textContent = '出现错误';
+      } else {
+        statusIndicator.style.backgroundColor = '#4cd964'; // 绿色表示就绪
+        statusText.textContent = '准备就绪';
+      }
+    }
+
+    // 注册日志监听器
+    window.electronAPI.onLog((message) => {
+      addLog(message);
+    });
+
+    // 检查多段剪切是否可提交
+    function checkMultiCutForm() {
+      let validSegments = segments.filter(segment => 
+        segment.startTime && segment.endTime && 
+        validateTimeFormat(segment.startTime) && 
+        validateTimeFormat(segment.endTime)
+      );
+      document.getElementById('cutMultipleButton').disabled = !(cutInputPath && cutOutputDir && validSegments.length > 0);
+    }
+
+    // 选择剪切输入文件
+    async function selectCutInputFile() {
+      const filePath = await window.electronAPI.selectInputFile('mp4');
+      if (filePath) {
+        cutInputPath = filePath;
+        document.getElementById('cutInputFile').textContent = filePath;
+        addLog(`已选择输入文件: ${filePath}`);
+        
+        checkMultiCutForm();
+        renderSegments(); // 重新渲染片段列表
+      }
+    }
+    
+    // 选择输出目录
+    async function selectOutputDir() {
+      const dirPath = await window.electronAPI.selectOutputDirectory();
+      if (dirPath) {
+        cutOutputDir = dirPath;
+        document.getElementById('cutOutputDir').textContent = dirPath;
+        addLog(`已选择输出目录: ${dirPath}`);
+        checkMultiCutForm();
+      }
+    }
+
+    // 选择转换输入文件
+    async function selectConvertInputFile() {
+      const filePath = await window.electronAPI.selectInputFile('mkv');
+      if (filePath) {
+        convertInputPath = filePath;
+        document.getElementById('convertInputFile').textContent = filePath;
+        addLog(`已选择MKV文件: ${filePath}`);
+        
+        // 如果还没有设置输出文件，则预设一个输出路径
+        if (!convertOutputPath) {
+          const lastDotIndex = filePath.lastIndexOf('.');
+          const baseName = lastDotIndex > 0 ? filePath.substr(0, lastDotIndex) : filePath;
+          const defaultOutputPath = `${baseName}.mp4`;
+          
+          convertOutputPath = defaultOutputPath;
+          document.getElementById('convertOutputFile').textContent = defaultOutputPath;
+        }
+        
+        checkConvertForm();
+      }
+    }
+
+    // 选择转换输出文件
+    async function selectConvertOutputFile() {
+      let defaultName = convertInputPath ? convertInputPath.replace(/\.[^/.]+$/, ".mp4") : "";
+      const filePath = await window.electronAPI.selectOutputFile(defaultName);
+      if (filePath) {
+        convertOutputPath = filePath;
+        document.getElementById('convertOutputFile').textContent = filePath;
+        addLog(`已选择输出文件: ${filePath}`);
+        checkConvertForm();
+      }
+    }
+    
+    // 验证时间格式
+    function validateTimeFormat(time) {
+      if (!time) return false;
+      const timeRegex = /^([0-9]{1,2}):([0-5][0-9]):([0-5][0-9])$/;
+      return timeRegex.test(time);
+    }
+    
+    // 添加片段
+    function addSegment() {
+      const newIndex = segments.length;
+      segments.push({
+        startTime: '', 
+        endTime: '', 
+        label: `片段${newIndex + 1}`
+      });
+      
+      console.log(`添加片段 #${newIndex + 1}, 当前共有 ${segments.length} 个片段`);
+      
+      // 更新UI
+      renderSegments();
+      
+      // 更新按钮状态
+      checkMultiCutForm();
+      
+      addLog(`已添加新片段 #${segments.length}`);
+    }
+    
+    // 更新片段
+    function updateSegment(index, field, value) {
+      if (index >= 0 && index < segments.length) {
+        segments[index][field] = value;
+        console.log(`更新片段 #${index+1} ${field}=${value}`);
+        checkMultiCutForm();
+      } else {
+        console.error(`更新片段错误: 索引 ${index} 超出范围(0-${segments.length-1})`);
+      }
+    }
+    
+    // 渲染片段列表
+    function renderSegments() {
+      const segmentList = document.getElementById('segmentList');
+      segmentList.innerHTML = '';
+      
+      if (segments.length === 0) {
+        segments.push({
+          startTime: '', 
+          endTime: '', 
+          label: `片段1`
+        });
+      }
+      
+      console.log(`正在渲染 ${segments.length} 个片段`);
+      
+      // 为每个片段创建元素
+      segments.forEach((segment, index) => {
+        const segmentItem = document.createElement('div');
+        segmentItem.className = 'segment-item';
+        segmentItem.innerHTML = `
+          <div class="segment-number">${index + 1}</div>
+          <div class="segment-input-group">
+            <input type="text" 
+                  placeholder="起始时间 (00:00:00)" 
+                  value="${segment.startTime}" 
+                  onchange="updateSegment(${index}, 'startTime', this.value)">
+          </div>
+          <div class="segment-input-group">
+            <input type="text" 
+                  placeholder="结束时间 (00:00:00)" 
+                  value="${segment.endTime}" 
+                  onchange="updateSegment(${index}, 'endTime', this.value)">
+          </div>
+          <button class="segment-button delete-btn" onclick="removeSegment(${index})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+            </svg>
+          </button>
+        `;
+        segmentList.appendChild(segmentItem);
+      });
+    }
+    
+    // 编辑片段
+    function editSegment(index) {
+      const segment = segments[index];
+      document.getElementById('newSegmentStart').value = segment.startTime;
+      document.getElementById('newSegmentEnd').value = segment.endTime;
+      document.getElementById('newSegmentLabel').value = segment.label;
+      
+      // 移除这个片段
+      segments.splice(index, 1);
+      renderSegments();
+      checkMultiCutForm();
+    }
+    
+    // 移除片段
+    function removeSegment(index) {
+      if (index >= 0 && index < segments.length) {
+        console.log(`删除片段 #${index + 1}, 删除前总数: ${segments.length}`);
+        segments.splice(index, 1);
+        
+        // 确保至少有一个片段
+        if (segments.length === 0) {
+          segments.push({
+            startTime: '', 
+            endTime: '', 
+            label: `片段1`
+          });
+        }
+        
+        // 重新编号片段
+        repairSegmentsArray();
+        
+        renderSegments();
+        checkMultiCutForm();
+        addLog(`已移除片段 #${index + 1}, 当前剩余 ${segments.length} 个片段`);
+      } else {
+        console.error(`删除片段错误: 索引 ${index} 超出范围(0-${segments.length-1})`);
+      }
+    }
+
+    // 执行多段视频剪切
+    async function cutMultipleSegments() {
+      if (!cutInputPath || !cutOutputDir) {
+        addLog('错误: 请先设置输入文件和输出目录');
+        return;
+      }
+      
+      // 过滤有效片段
+      const validSegments = segments.filter(segment => 
+        segment.startTime && segment.endTime && 
+        validateTimeFormat(segment.startTime) && 
+        validateTimeFormat(segment.endTime)
+      );
+      
+      console.log(`有效片段数量: ${validSegments.length}, 总片段数: ${segments.length}`);
+      console.log('所有片段:', JSON.stringify(segments));
+      console.log('有效片段:', JSON.stringify(validSegments));
+      
+      if (validSegments.length === 0) {
+        addLog('错误: 请至少添加一个有效的剪切片段');
+        return;
+      }
+      
+      try {
+        document.getElementById('cutMultipleButton').disabled = true;
+        addLog(`开始剪切 ${validSegments.length} 个片段...`);
+        
+        // 创建副本以避免引用问题
+        const segmentsToSend = JSON.parse(JSON.stringify(validSegments));
+        
+        const result = await window.electronAPI.cutMultipleSegments({
+          inputPath: cutInputPath,
+          outputDir: cutOutputDir,
+          segments: segmentsToSend
+        });
+        
+        addLog(`剪切完成，成功: ${result.success} 个，失败: ${result.fail} 个，总共: ${result.total} 个`);
+      } catch (error) {
+        addLog(`剪切失败: ${error}`);
+      } finally {
+        document.getElementById('cutMultipleButton').disabled = false;
+      }
+    }
+
+    // 执行MKV转MP4
+    async function convertVideo() {
+      try {
+        document.getElementById('convertButton').disabled = true;
+        addLog('开始转换MKV到MP4...');
+        
+        const result = await window.electronAPI.convertMkv({
+          inputPath: convertInputPath,
+          outputPath: convertOutputPath
+        });
+        
+        addLog(`操作结果: ${result}`);
+      } catch (error) {
+        addLog(`转换失败: ${error}`);
+      } finally {
+        document.getElementById('convertButton').disabled = false;
+      }
+    }
+
+    // 检查转换表单是否可提交
+    function checkConvertForm() {
+      document.getElementById('convertButton').disabled = !(convertInputPath && convertOutputPath);
+    }
+
+    // 清除日志
+    function clearLog() {
+      const logContainer = document.getElementById('logContainer');
+      logContainer.innerHTML = '<div class="log-message">已清除日志，系统就绪...</div>';
+      
+      // 重置状态指示器
+      const statusIndicator = document.querySelector('.status-indicator');
+      const statusText = document.querySelector('.status-text');
+      statusIndicator.style.backgroundColor = '#4cd964';
+      statusText.textContent = '准备就绪';
+      
+      console.log('日志已清除');
+    }
+    
+    // 页面加载时初始化片段列表
+    document.addEventListener('DOMContentLoaded', function() {
+      repairSegmentsArray();
+      renderSegments();
+      console.log('页面加载完成，片段数组初始化完毕');
+    });
+  </script>
+</body>
+</html> 
