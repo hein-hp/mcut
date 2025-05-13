@@ -50,6 +50,22 @@ ipcMain.handle('select-input-file', async (event, fileType) => {
   return result.filePaths[0];
 });
 
+// 处理批量选择输入文件
+ipcMain.handle('select-multiple-input-files', async (event, fileType) => {
+  const extensions = fileType === 'mkv' ? ['mkv'] : ['mp4', 'avi', 'mov', 'mkv'];
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: '视频文件', extensions: extensions }
+    ]
+  });
+  
+  if (result.canceled) {
+    return null;
+  }
+  return result.filePaths;
+});
+
 // 处理选择输出文件
 ipcMain.handle('select-output-file', async (event, defaultName, extension) => {
   // 设置文件过滤器，默认为MP4
@@ -195,6 +211,62 @@ ipcMain.handle('convert-mkv', async (event, { inputPath, outputPath }) => {
       mainWindow.webContents.send('log', 'MKV转MP4完成!');
       resolve('MKV转MP4成功');
     });
+  });
+});
+
+// 处理批量MKV转MP4
+ipcMain.handle('batch-convert-mkv', async (event, { inputPaths, outputDir }) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let successCount = 0;
+      let failCount = 0;
+      
+      mainWindow.webContents.send('log', `开始批量转换 ${inputPaths.length} 个MKV文件...`);
+      
+      // 处理每个文件
+      for (let i = 0; i < inputPaths.length; i++) {
+        const inputPath = inputPaths[i];
+        
+        // 生成输出文件名
+        const fileName = `${path.basename(inputPath, path.extname(inputPath))}.mp4`;
+        const outputPath = path.join(outputDir, fileName);
+        
+        // 构建命令
+        const command = `ffmpeg -i "${inputPath}" -vcodec copy -acodec aac "${outputPath}"`;
+        
+        mainWindow.webContents.send('log', `处理文件 ${i+1}/${inputPaths.length}: ${path.basename(inputPath)}`);
+        mainWindow.webContents.send('log', `执行命令: ${command}`);
+        
+        try {
+          // 执行命令
+          await new Promise((cmdResolve, cmdReject) => {
+            exec(command, (error) => {
+              if (error) {
+                cmdReject(error);
+                return;
+              }
+              cmdResolve();
+            });
+          });
+          
+          mainWindow.webContents.send('log', `文件 ${i+1} 转换成功: ${outputPath}`);
+          successCount++;
+        } catch (err) {
+          mainWindow.webContents.send('log', `文件 ${i+1} 转换失败: ${err.message}`);
+          failCount++;
+        }
+      }
+      
+      mainWindow.webContents.send('log', `批量转换完成，成功: ${successCount} 个，失败: ${failCount} 个`);
+      resolve({
+        success: successCount,
+        fail: failCount,
+        total: inputPaths.length
+      });
+    } catch (error) {
+      mainWindow.webContents.send('log', `批量处理出错: ${error.message}`);
+      reject(error.message);
+    }
   });
 });
 
